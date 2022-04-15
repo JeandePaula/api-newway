@@ -1,0 +1,50 @@
+version: "3.3"
+
+services:
+  mydb:
+    container_name: mysql
+    image: mariadb
+    restart: always
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: newway
+
+  nginx:
+    container_name: nginx
+    build: docker-image/nginx
+    command: nginx -g "daemon off;"
+    links:
+      - php
+    ports:
+      - "8000:80"
+    depends_on:
+      - mydb
+
+  composer_installation:
+    container_name: composer_installation
+    image: composer
+    volumes:
+      - .:/var/www/html
+    working_dir: /var/www/html
+    command: composer install --ignore-platform-reqs
+    depends_on:
+      - mydb
+
+  php:
+    container_name: php
+    build: docker-image/php
+    volumes:
+      - .:/var/www/html
+    working_dir: /var/www/html
+    entrypoint: sh -c "cp /var/www/html/.env.example .env && sleep 30 && php /var/www/html/artisan migrate --seed && php-fpm"
+    links:
+      - mydb:mydb
+    ports:
+      - "9000:9000"
+    depends_on:
+      - mydb
+      - composer_installation
+
+  
